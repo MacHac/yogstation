@@ -29,6 +29,9 @@
 	..()
 	aggro_log = list()
 
+/mob/living/simple_animal/hostile/megafauna/pummel(atom/moveable/AM, force)
+	return //Megafauna are simply too big to throw around
+
 /mob/living/simple_animal/hostile/megafauna/death(gibbed)
 	if(health > 0)
 		return
