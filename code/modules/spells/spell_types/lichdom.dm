@@ -17,7 +17,7 @@
 	cooldown_min = 10
 	include_user = 1
 
-	var/obj/marked_item
+	var/obj/item/marked_item
 	var/mob/living/current_body
 	var/resurrections = 0
 	var/existence_stops_round_end = 0
@@ -41,10 +41,6 @@
 
 /obj/effect/proc_holder/spell/targeted/lichdom/cast(list/targets,mob/user = usr)
 	for(var/mob/M in targets)
-		var/list/hand_items = list()
-		if(iscarbon(M))
-			hand_items = list(M.get_active_hand(),M.get_inactive_hand())
-
 		if(marked_item && !stat_allowed) //sanity, shouldn't happen without badminry
 			marked_item = null
 			return
@@ -102,17 +98,30 @@
 				old_body.dust()
 
 		if(!marked_item) //linking item to the spell
-			message = "<span class='warning'>"
-			for(var/obj/item in hand_items)
-				if(ABSTRACT in item.flags || NODROP in item.flags)
-					continue
-				marked_item = item
-				to_chat(M, "<span class='warning'>You begin to focus your very being into the [item.name]...</span>")
-				break
+			var/obj/item/list/items = list(user.get_active_hand(), user.get_inactive_hand())
 
-			if(!marked_item)
+			for(var/obj/item/i in items)
+				if(ABSTRACT in i.flags || NODROP in i.flags)
+					items.Remove(i)
+
+			if(!items.len)
 				to_chat(M, "<span class='caution'>You must hold an item you wish to make your phylactery...</span>")
 				return
+
+			var/obj/item/i = input(user, "Select a target.", "Select Target", "Cancel") as anything in items
+
+			if(i.w_class < 2)
+				to_chat(M, "<span class='caution'>Your soul will not fit in the [i.name]!</span>")
+				return
+
+			if(i.w_class < 4)
+				var/answer = alert(M, "This item is barely large enough to contain your soul.  It will take longer to regenerate your body.  Continue?", "Yes", "No")
+				if(answer == "No")
+					return
+
+			marked_item = i
+			to_chat(M, "<span class='warning'>You begin to focus your very being into the [i.name]...</span>")
+
 			if(!do_after(M, 50, needhand=FALSE, target=marked_item))
 				to_chat(M, "<span class='warning'>Your soul snaps back to your body as you stop ensouling [marked_item.name]!</span>")
 				marked_item = null
@@ -120,8 +129,8 @@
 
 			name = "RISE!"
 			desc = "Rise from the dead! You will reform at the location of your phylactery and your old body will crumble away."
-			charge_max = 1800 //3 minute cooldown, if you rise in sight of someone and killed again, you're probably screwed.
-			charge_counter = 1800
+			charge_max = 1800 + (600 * Clamp(4 - marked_item.w_class, 0, 2)) //3 minute cooldown at or above w_class = 4, increasing to 5 minutes at maximum
+			charge_counter = charge_max
 			stat_allowed = 1
 			marked_item.name = "Ensouled [marked_item.name]"
 			marked_item.desc = "A terrible aura surrounds this item, its very existence is offensive to life itself..."
